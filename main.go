@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	logger := dlog.NewLogger("fetcher")
+	logger := dlog.NewLogger("ms")
 
 	for true {
 		logger.Info("Still alive...")
