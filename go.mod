@@ -1,4 +1,4 @@
-module flowlab.no/ms
+module github.com/flow-lab/ms
 
 go 1.12
 
