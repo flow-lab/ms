@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/flow-lab/dlog"
 	"time"
+
+	"github.com/flow-lab/dlog"
 )
 
 func main() {
