@@ -1,4 +1,4 @@
-FROM golang:1-alpine
+FROM golang:alpine as builder
 
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh gcc musl-dev
@@ -6,10 +6,14 @@ RUN apk update && apk upgrade && \
 WORKDIR /go/src/app
 COPY . .
 
+ENV CGO_ENABLED=0
 ENV GO111MODULE=on
 
-RUN go get -d -v ./...
+RUN go mod download
+RUN go mod verify
 RUN go test -v ./...
-RUN go build -o $GOPATH/bin/app
+RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/app
 
-CMD ["app"]
+FROM scratch
+COPY --from=builder /go/bin/app /go/bin/app
+ENTRYPOINT ["/go/bin/app"]
