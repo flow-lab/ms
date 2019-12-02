@@ -1,23 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/flow-lab/dlog"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	logger := dlog.NewLogger("ms")
-
 	for true {
-		DoStuff(logger)
+		DoStuff()
 		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
 // DoStuff - I am doing stuff
-func DoStuff(logger *logrus.Entry) bool {
-	logger.Info("Still alive...")
+func DoStuff() bool {
+	fmt.Println("Still alive...")
 	return true
 }
