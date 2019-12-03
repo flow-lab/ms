@@ -9,7 +9,7 @@ COPY . .
 ENV CGO_ENABLED=0
 ENV GO111MODULE=on
 
-RUN make test verify build-app
+RUN make build-app
 
 FROM scratch
 COPY --from=builder /go/bin/app /go/bin/app
