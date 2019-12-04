@@ -27,7 +27,7 @@ build-app: test
 	GOOS=linux GOARCH=amd64 go build -mod=readonly -ldflags="-w -s" -o /go/bin/app ./...
 
 run-local:
-	docker run -it -p 8080:8080 --rm ${DOCKER_IMG}
+	docker run -it -p 80:80 --rm ${DOCKER_IMG}
 
 docker-tag:
 	docker tag ${DOCKER_IMG} ${HOSTNAME}/${PROJECT}/${SRV_NAME}

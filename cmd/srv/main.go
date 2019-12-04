@@ -17,7 +17,7 @@ func main() {
 
 func run() error {
 	http.HandleFunc("/health", Chain(Health, OnlyMethod("GET"), Logging()))
-	return http.ListenAndServe(":8080", nil)
+	return http.ListenAndServe(":80", nil)
 }
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
