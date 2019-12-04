@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 SRV_NAME := ms
-PROJECT := test
+PROJECT := diatom-ai
 HOSTNAME := eu.gcr.io
 DOCKER_IMG := flowlab/${SRV_NAME}
 
@@ -40,7 +40,7 @@ minikube-run:
 	kubectl run ${SRV_NAME} --generator=run-pod/v1 --image=${DOCKER_IMG} --image-pull-policy=Never
 
 minikube-delete:
-	kubectl delete deployment ${SRV_NAME}
+	kubectl delete pod ${SRV_NAME}
 
 minikube-expose:
 	kubectl expose pod ${SRV_NAME} --port=8080 --name=${SRV_NAME} --type=NodePort

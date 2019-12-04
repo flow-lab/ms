@@ -5,8 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
-	"strings"
+	"time"
 )
 
 func main() {
@@ -16,83 +15,46 @@ func main() {
 	}
 }
 
-type Route struct {
-	Logger  bool
-	Handler http.Handler
-}
-
-type App struct {
-	Health *Route
-}
-
 func run() error {
-	app := &App{
-		Health: &Route{
-			Logger: true,
-		},
-	}
-
-	fmt.Println("started ...")
-	return http.ListenAndServe(":8080", app)
+	http.HandleFunc("/health", Chain(Health, OnlyMethod("GET"), Logging()))
+	return http.ListenAndServe(":8080", nil)
 }
 
-type Health struct{}
+type Middleware func(http.HandlerFunc) http.HandlerFunc
 
-func (h Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var head string
-	head, r.URL.Path = shiftPath(r.URL.Path)
-	if len(head) == 0 {
-		_, _ = w.Write([]byte("ok"))
-	} else {
-		http.Error(w, "not found", http.StatusNotFound)
+func Chain(f http.HandlerFunc, ms ...Middleware) http.HandlerFunc {
+	for _, m := range ms {
+		f = m(f)
 	}
+	return f
 }
 
-func shiftPath(p string) (string, string) {
-	p = path.Clean("/" + p)
-	i := strings.Index(p[1:], "/") + 1
-	var head, tail string
-	if i <= 0 {
-		head = p[1:]
-		tail = "/"
-	} else {
-		head = p[1:i]
-		tail = p[i:]
-	}
-	return head, tail
-}
-
-func (h *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var next *Route
-	var head string
-	head, r.URL.Path = shiftPath(r.URL.Path)
-	if len(head) == 0 {
-		next = &Route{
-			Logger: true,
-			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				_, _ = w.Write([]byte("index"))
-			}),
+// Logging logs all requests with its path and the processing time
+func Logging() Middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			defer func() {
+				log.Println(r.URL.Path, time.Since(start))
+			}()
+			f(w, r)
 		}
-	} else if head == "health" {
-		var i interface{} = Health{}
-		next = &Route{
-			Logger:  true,
-			Handler: i.(http.Handler),
-		}
-	} else {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
 	}
-
-	if next.Logger {
-		next.Handler = h.log(next.Handler)
-	}
-
-	next.Handler.ServeHTTP(w, r)
-
 }
 
-func (h *App) log(handler http.Handler) http.Handler {
-	// TODO [grokrz]: add logging
-	return handler
+// OnlyMethod ensures that url can only be requested with a specific method, else returns a 400 Bad Request
+func OnlyMethod(m string) Middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != m {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+				return
+			}
+			f(w, r)
+		}
+	}
+}
+
+func Health(w http.ResponseWriter, _ *http.Request) {
+	_, _ = fmt.Fprintln(w, "Ok")
 }
