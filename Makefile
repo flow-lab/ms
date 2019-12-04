@@ -18,7 +18,7 @@ verify:
 	go mod verify
 
 test:
-	go test -mod=readonly -v ./...
+	go test -mod=readonly -covermode=atomic -v ./...
 
 build-docker:
 	docker build -t ${DOCKER_IMG} .
