@@ -35,18 +35,18 @@ docker-tag:
 docker-push:
 	gcloud docker -- push ${HOSTNAME}/${PROJECT}/${SRV_NAME}
 
-# minikube -> https://kubernetes.io/docs/setup/learning-environment/minikube
-#minikube-create:
-#	kubectl create deployment ${SRV_NAME} --image=${HOSTNAME}/${PROJECT}/${SRV_NAME}:latest
-#
-#minikube-delete:
-#	kubectl delete deployment ${SRV_NAME}
-#
-#minikube-expose:
-#	kubectl expose deployment ${SRV_NAME} --type=NodePort --port=8080
-#
-#minikube-get-pod:
-#	kubectl get pod
-#
-#minikube-service:
-#	minikube service ${SRV_NAME} --url
+# minikube
+minikube-run:
+	kubectl run ${SRV_NAME} --generator=run-pod/v1 --image=${DOCKER_IMG} --image-pull-policy=Never
+
+minikube-delete:
+	kubectl delete deployment ${SRV_NAME}
+
+minikube-expose:
+	kubectl expose pod ${SRV_NAME} --port=8080 --name=${SRV_NAME} --type=NodePort
+
+minikube-get-pod:
+	kubectl get pod
+
+minikube-service-url:
+	minikube service ${SRV_NAME} --url
