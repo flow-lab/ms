@@ -30,7 +30,7 @@ run-local:
 	docker run -it -p 8080:8080 --rm ${DOCKER_IMG}
 
 docker-tag:
-	docker tag ${DOCKER_IMG} ${HOSTNAME}/${PROJECT}/${SRV_NxAME}
+	docker tag ${DOCKER_IMG} ${HOSTNAME}/${PROJECT}/${SRV_NAME}
 
 docker-push:
 	gcloud docker -- push ${HOSTNAME}/${PROJECT}/${SRV_NAME}
