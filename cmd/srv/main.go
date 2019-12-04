@@ -16,8 +16,14 @@ func main() {
 }
 
 func run() error {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("listening on localhost:%s", port)
 	http.HandleFunc("/health", Chain(Health, OnlyMethod("GET"), Logging()))
-	return http.ListenAndServe(":80", nil)
+	return http.ListenAndServe(":"+port, nil)
 }
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
