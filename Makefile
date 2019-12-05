@@ -24,10 +24,7 @@ build-docker:
 	docker build -t ${DOCKER_IMG} .
 
 build-app: test
-	GOOS=linux GOARCH=amd64 go build -mod=readonly -ldflags="-w -s" -o /go/bin/app ./...
-
-run-local:
-	docker run -it -p 8080:8080 --rm ${DOCKER_IMG}
+	GOOS=linux GOARCH=amd64 go build -mod=readonly -ldflags="-w -s" -o /go/bin/app ./cmd/srv/
 
 docker-tag:
 	docker tag ${DOCKER_IMG} ${HOSTNAME}/${PROJECT}/${SRV_NAME}
@@ -35,18 +32,18 @@ docker-tag:
 docker-push:
 	gcloud docker -- push ${HOSTNAME}/${PROJECT}/${SRV_NAME}
 
+docker-clean:
+	docker system prune -f
+
 # minikube
-minikube-run:
-	kubectl run ${SRV_NAME} --generator=run-pod/v1 --image=${DOCKER_IMG} --image-pull-policy=Never
+minikube-init:
+	eval $(minikube docker-env)
 
-minikube-delete:
-	kubectl delete pod ${SRV_NAME}
-
-minikube-expose:
-	kubectl expose pod ${SRV_NAME} --port=8080 --name=${SRV_NAME} --type=NodePort
+minikube-local:
+	kubectl apply -f k8-local.yml
 
 minikube-get-pod:
 	kubectl get pod
 
-minikube-service-url:
+minikube-app-url:
 	minikube service ${SRV_NAME} --url

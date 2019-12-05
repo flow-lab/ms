@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms
+  template:
+    metadata:
+      labels:
+        app: ms
+    spec:
+      containers:
+        - name: ms
+          image: flowlab/ms
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_USER
+              value: "test"
+            - name: DB_PASSWORD
+              value: "test"
+            - name: DB_DISABLE_TLS
+              value: "true"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:12
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "test"
+            - name: POSTGRES_PASSWORD
+              value: "test"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms
+spec:
+  selector:
+    app: ms
+  type: NodePort
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

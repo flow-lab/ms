@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	database "github.com/flow-lab/ms/internal/platform"
 	"log"
 	"net/http"
 	"os"
@@ -21,8 +21,35 @@ func run() error {
 		port = "8080"
 	}
 
+	name := os.Getenv("DB_NAME")
+	if name == "" {
+		name = "postgres"
+	}
+
+	user := os.Getenv("DB_USER")
+
+	pass := os.Getenv("DB_PASSWORD")
+
+	host := os.Getenv("DB_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+
+	disableTLS := false
+	if os.Getenv("DB_DISABLE_TLS") == "true" {
+		disableTLS = true
+	}
+
+	c := database.Config{
+		Name:       name,
+		User:       user,
+		Password:   pass,
+		Host:       host,
+		DisableTLS: disableTLS,
+	}
+
 	log.Printf("listening on localhost:%s", port)
-	http.HandleFunc("/health", Chain(Health, OnlyMethod("GET"), Logging()))
+	http.HandleFunc("/health", Chain(Health(c), OnlyMethod("GET"), Logging()))
 	return http.ListenAndServe(":"+port, nil)
 }
 
@@ -59,8 +86,4 @@ func OnlyMethod(m string) Middleware {
 			f(w, r)
 		}
 	}
-}
-
-func Health(w http.ResponseWriter, _ *http.Request) {
-	_, _ = fmt.Fprintln(w, "Ok")
 }

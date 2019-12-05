@@ -14,5 +14,8 @@ To deploy locally to minikube:
 ### Set docker env
 `eval $(minikube docker-env)`
 
-### Build docker image, run, expose and get url
-`make build-docker minikube-run minikube-expose minikube-service-url`
+### Build docker image, deploy to minikube, and get url to service
+Given that your minikube is already running. Run:
+
+`make build-docker minikube-local minikube-app-url`
+ 
