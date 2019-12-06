@@ -23,9 +23,6 @@ test:
 build-docker:
 	docker build -t ${DOCKER_IMG} .
 
-build-app: test
-	GOOS=linux GOARCH=amd64 go build -mod=readonly -ldflags="-w -s" -o /go/bin/app ./cmd/srv/
-
 docker-tag:
 	docker tag ${DOCKER_IMG} ${HOSTNAME}/${PROJECT}/${SRV_NAME}
 

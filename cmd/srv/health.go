@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	database "github.com/flow-lab/ms/internal/platform"
@@ -15,25 +16,10 @@ type status struct {
 
 // Health checks health status of this application. Will run check against db, if
 // everything looks ok then it will return 200 code, 500 otherwise.
-func Health(c database.Config) func(w http.ResponseWriter, _ *http.Request) {
+func Health(db *sql.DB, log *log.Logger) func(w http.ResponseWriter, _ *http.Request) {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		s, err := database.Open(c)
-		if err != nil {
-			b, _ := json.Marshal(&status{
-				DB: false,
-			})
-			log.Printf("got an error: %v", err)
-			http.Error(w, string(b), http.StatusInternalServerError)
-			return
-		}
-
-		err = database.StatusCheck(context.Background(), s)
-		if err != nil {
-			log.Printf("got an error: %v", err)
-			b, _ := json.Marshal(&status{
-				DB: false,
-			})
-			http.Error(w, string(b), http.StatusInternalServerError)
+		if err := database.StatusCheck(context.Background(), db); err != nil {
+			http.Error(w, errMsg(err, log), http.StatusInternalServerError)
 			return
 		}
 
@@ -42,4 +28,12 @@ func Health(c database.Config) func(w http.ResponseWriter, _ *http.Request) {
 		})
 		_, _ = fmt.Fprintln(w, string(b))
 	}
+}
+
+func errMsg(err error, log *log.Logger) string {
+	b, _ := json.Marshal(&status{
+		DB: false,
+	})
+	log.Printf("error: %v", err)
+	return string(b)
 }

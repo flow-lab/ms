@@ -1,11 +1,24 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"expvar"
+	"fmt"
+	"github.com/flow-lab/ms/internal/middleware"
 	database "github.com/flow-lab/ms/internal/platform"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
+)
+
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 func main() {
@@ -48,42 +61,76 @@ func run() error {
 		DisableTLS: disableTLS,
 	}
 
-	log.Printf("listening on localhost:%s", port)
-	http.HandleFunc("/health", Chain(Health(c), OnlyMethod("GET"), Logging()))
-	return http.ListenAndServe(":"+port, nil)
-}
+	expvar.NewString("version").Set(version)
+	expvar.NewString("commit").Set(commit)
+	expvar.NewString("date").Set(date)
 
-type Middleware func(http.HandlerFunc) http.HandlerFunc
+	l := log.New(os.Stdout, fmt.Sprintf("MS : (%s, %s) : ", version, short(commit)), log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
-func Chain(f http.HandlerFunc, ms ...Middleware) http.HandlerFunc {
-	for _, m := range ms {
-		f = m(f)
+	// db
+	l.Println("initializing database support")
+	db, err := database.Open(c)
+	if err != nil {
+		return err
 	}
-	return f
-}
+	defer func() {
+		log.Printf("closing db connection")
+		_ = db.Close()
+	}()
 
-// Logging logs all requests with its path and the processing time
-func Logging() Middleware {
-	return func(f http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			defer func() {
-				log.Println(r.URL.Path, time.Since(start))
-			}()
-			f(w, r)
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	l.Println("initializing api server")
+	readTimeout, _ := time.ParseDuration("5s")
+	writeTimeout, _ := time.ParseDuration("5s")
+	apiSrv := http.Server{
+		Addr:         ":" + port,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+	}
+
+	// Make a channel to listen for errors coming from the listener. Use a
+	// buffered channel so the goroutine can exit if we don't collect this error.
+	serverErrors := make(chan error, 1)
+
+	defer l.Printf("completed")
+	go func(log *log.Logger) {
+		log.Printf("api server listening on %s", apiSrv.Addr)
+		http.HandleFunc("/health", middleware.Chain(Health(db, l), middleware.OnlyMethod("GET"), middleware.Logging(l)))
+		serverErrors <- apiSrv.ListenAndServe()
+	}(l)
+
+	select {
+	case err := <-serverErrors:
+		return err
+	case sig := <-shutdown:
+		timeout, _ := time.ParseDuration("5s")
+		log.Printf("got: %v : Start shutdown with timeout %s", sig, timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		// Asking listener to shutdown and load shed.
+		err := apiSrv.Shutdown(ctx)
+		if err != nil {
+			log.Printf("graceful shutdown timeout in %v : %v", timeout, err)
+			err = apiSrv.Close()
+		}
+
+		switch {
+		case sig == syscall.SIGSTOP:
+			return errors.New("integrity issue caused shutdown")
+		case err != nil:
+			return err
 		}
 	}
+
+	return nil
 }
 
-// OnlyMethod ensures that url can only be requested with a specific method, else returns a 400 Bad Request
-func OnlyMethod(m string) Middleware {
-	return func(f http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != m {
-				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-				return
-			}
-			f(w, r)
-		}
+func short(s string) string {
+	if len(s) > 7 {
+		return s[0:7]
 	}
+	return s
 }

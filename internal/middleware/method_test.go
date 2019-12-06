@@ -1,4 +1,4 @@
-package main
+package middleware
 
 import (
 	"net/http"
@@ -6,22 +6,8 @@ import (
 	"testing"
 )
 
-func ok(w http.ResponseWriter, r *http.Request) {
+func ok(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("ok"))
-}
-
-func TestLogging(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	check(t, err)
-
-	rec := httptest.NewRecorder()
-	h := Chain(ok, Logging())
-
-	h.ServeHTTP(rec, req)
-
-	if rec.Code != 200 {
-		t.Errorf("response code was %v instead of 200", rec.Code)
-	}
 }
 
 func TestOnlyMethod(t *testing.T) {
